@@ -20,20 +20,28 @@ RUN pecl install redis && docker-php-ext-enable redis
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 # Set working directory
-WORKDIR /var/www
+WORKDIR /var/www/html
 
-# Copy composer files
+# Copy composer files first
 COPY composer.json composer.lock ./
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Install PHP dependencies without running scripts
+RUN composer install --optimize-autoloader --no-interaction --no-scripts
 
 # Copy application code
 COPY . .
 
-# Set permissions
-RUN chown -R www-data:www-data /var/www \
-    && chmod -R 755 /var/www/storage
+# Now run composer scripts
+RUN composer run-script post-install-cmd
+
+# Copy PHP-FPM configuration
+COPY docker/php/www.conf /usr/local/etc/php-fpm.d/www.conf
+COPY docker/php/zz-docker.conf /usr/local/etc/php-fpm.d/zz-docker.conf
+
+# Create necessary directories
+RUN mkdir -p var/cache var/log var/sessions \
+    && chown -R www-data:www-data var \
+    && chmod -R 755 var
 
 # Expose port
 EXPOSE 80

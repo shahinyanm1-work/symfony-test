@@ -106,55 +106,61 @@ class OrderRepository extends ServiceEntityRepository
         ?\DateTimeInterface $toDate = null,
         ?int $userId = null
     ): array {
-        $qb = $this->createQueryBuilder('o');
+        $conn = $this->getEntityManager()->getConnection();
 
-        // Apply filters
-        if ($status !== null) {
-            $qb->andWhere('o.status = :status')
-                ->setParameter('status', $status);
-        }
-
-        if ($fromDate !== null) {
-            $qb->andWhere('o.createdAt >= :fromDate')
-                ->setParameter('fromDate', $fromDate);
-        }
-
-        if ($toDate !== null) {
-            $qb->andWhere('o.createdAt <= :toDate')
-                ->setParameter('toDate', $toDate);
-        }
-
-        if ($userId !== null) {
-            $qb->andWhere('o.userId = :userId')
-                ->setParameter('userId', $userId);
-        }
-
-        // Group by date format
         switch ($groupBy) {
             case 'day':
-                $qb->select('DATE(o.createdAt) as group, COUNT(o.id) as count')
-                    ->groupBy('DATE(o.createdAt)');
+                $groupExpr = 'DATE(o.created_at)';
                 break;
             case 'month':
-                $qb->select('DATE_FORMAT(o.createdAt, "%Y-%m") as group, COUNT(o.id) as count')
-                    ->groupBy('DATE_FORMAT(o.createdAt, "%Y-%m")');
+                $groupExpr = "DATE_FORMAT(o.created_at, '%Y-%m')";
                 break;
             case 'year':
-                $qb->select('YEAR(o.createdAt) as group, COUNT(o.id) as count')
-                    ->groupBy('YEAR(o.createdAt)');
+                $groupExpr = 'YEAR(o.created_at)';
                 break;
             default:
                 throw new \InvalidArgumentException("Invalid group_by parameter. Must be 'day', 'month', or 'year'.");
         }
 
-        $qb->orderBy('group', 'DESC');
+        $where = [];
+        $params = [];
 
-        // Apply pagination
+        if ($status !== null) {
+            $where[] = 'o.status = :status';
+            $params['status'] = $status;
+        }
+        if ($fromDate !== null) {
+            $where[] = 'o.created_at >= :fromDate';
+            $params['fromDate'] = $fromDate->format('Y-m-d H:i:s');
+        }
+        if ($toDate !== null) {
+            $where[] = 'o.created_at <= :toDate';
+            $params['toDate'] = $toDate->format('Y-m-d H:i:s');
+        }
+        if ($userId !== null) {
+            $where[] = 'o.user_id = :userId';
+            $params['userId'] = $userId;
+        }
+
+        $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
         $offset = ($page - 1) * $perPage;
-        $qb->setFirstResult($offset)
-            ->setMaxResults($perPage);
 
-        return $qb->getQuery()->getResult();
+        $sql = "SELECT {$groupExpr} AS `group`, COUNT(o.id) AS `count`
+                FROM orders o
+                {$whereSql}
+                GROUP BY {$groupExpr}
+                ORDER BY `group` DESC
+                LIMIT :limit OFFSET :offset";
+
+        $stmt = $conn->prepare($sql);
+        foreach ($params as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        // Принудительно как integers без кавычек
+        $stmt->bindValue('limit', $perPage, \Doctrine\DBAL\ParameterType::INTEGER);
+        $stmt->bindValue('offset', $offset, \Doctrine\DBAL\ParameterType::INTEGER);
+
+        return $stmt->executeQuery()->fetchAllAssociative();
     }
 
     public function getTotalAggregatedCount(
@@ -164,48 +170,40 @@ class OrderRepository extends ServiceEntityRepository
         ?\DateTimeInterface $toDate = null,
         ?int $userId = null
     ): int {
-        $qb = $this->createQueryBuilder('o');
+        $conn = $this->getEntityManager()->getConnection();
 
-        // Apply same filters as aggregation
-        if ($status !== null) {
-            $qb->andWhere('o.status = :status')
-                ->setParameter('status', $status);
-        }
-
-        if ($fromDate !== null) {
-            $qb->andWhere('o.createdAt >= :fromDate')
-                ->setParameter('fromDate', $fromDate);
-        }
-
-        if ($toDate !== null) {
-            $qb->andWhere('o.createdAt <= :toDate')
-                ->setParameter('toDate', $toDate);
-        }
-
-        if ($userId !== null) {
-            $qb->andWhere('o.userId = :userId')
-                ->setParameter('userId', $userId);
-        }
-
-        // Group by date format
         switch ($groupBy) {
             case 'day':
-                $qb->select('DATE(o.createdAt) as group')
-                    ->groupBy('DATE(o.createdAt)');
+                $groupExpr = 'DATE(o.created_at)';
                 break;
             case 'month':
-                $qb->select('DATE_FORMAT(o.createdAt, "%Y-%m") as group')
-                    ->groupBy('DATE_FORMAT(o.createdAt, "%Y-%m")');
+                $groupExpr = "DATE_FORMAT(o.created_at, '%Y-%m')";
                 break;
             case 'year':
-                $qb->select('YEAR(o.createdAt) as group')
-                    ->groupBy('YEAR(o.createdAt)');
+                $groupExpr = 'YEAR(o.created_at)';
                 break;
             default:
                 throw new \InvalidArgumentException("Invalid group_by parameter. Must be 'day', 'month', or 'year'.");
         }
 
-        return count($qb->getQuery()->getResult());
+        $where = [];
+        $params = [];
+        if ($status !== null) { $where[] = 'o.status = :status'; $params['status'] = $status; }
+        if ($fromDate !== null) { $where[] = 'o.created_at >= :fromDate'; $params['fromDate'] = $fromDate->format('Y-m-d H:i:s'); }
+        if ($toDate !== null) { $where[] = 'o.created_at <= :toDate'; $params['toDate'] = $toDate->format('Y-m-d H:i:s'); }
+        if ($userId !== null) { $where[] = 'o.user_id = :userId'; $params['userId'] = $userId; }
+
+        $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+        $sql = "SELECT COUNT(*) AS c FROM (
+                    SELECT {$groupExpr}
+                    FROM orders o
+                    {$whereSql}
+                    GROUP BY {$groupExpr}
+                ) t";
+
+        $stmt = $conn->prepare($sql);
+        foreach ($params as $k => $v) { $stmt->bindValue($k, $v); }
+        return (int) $stmt->executeQuery()->fetchOne();
     }
 
     public function searchOrders(string $query, int $page = 1, int $perPage = 20): array

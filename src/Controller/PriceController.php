@@ -93,15 +93,19 @@ class PriceController extends AbstractController
             }
 
             // Validate parameter format
-            $violations = $this->validator->validate([
+            $payload = [
                 'factory' => $factory,
                 'collection' => $collection,
-                'article' => $article
-            ], [
+                'article' => $article,
+            ];
+
+            $constraints = new Assert\Collection([
                 'factory' => [new Assert\NotBlank(), new Assert\Length(max: 100)],
                 'collection' => [new Assert\NotBlank(), new Assert\Length(max: 100)],
-                'article' => [new Assert\NotBlank(), new Assert\Length(max: 200)]
+                'article' => [new Assert\NotBlank(), new Assert\Length(max: 200)],
             ]);
+
+            $violations = $this->validator->validate($payload, $constraints);
 
             if (count($violations) > 0) {
                 $errors = [];

@@ -1,0 +1,93 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: orders-app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    environment:
+      - APP_ENV=dev
+      - APP_SECRET=dev-secret-key
+      - DATABASE_URL=mysql://root:password@db:3306/orders_db?serverVersion=8.0.32&charset=utf8mb4
+      - REDIS_URL=redis://redis:6379
+      - MANTICORE_HOST=manticore
+      - MANTICORE_PORT=9306
+      - MANTICORE_HTTP_PORT=9308
+      - MANTICORE_INDEX=orders
+      - PRICE_CACHE_TTL=3600
+      - TILE_EXPERT_BASE_URL=https://tile.expert
+      - LOG_LEVEL=info
+    networks:
+      - orders-network
+    depends_on:
+      - db
+      - redis
+      - manticore
+
+  nginx:
+    image: nginx:alpine
+    container_name: orders-nginx
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8082}:80"
+    volumes:
+      - ./:/var/www/html
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      - orders-network
+    depends_on:
+      - app
+
+  db:
+    image: mysql:8.0
+    container_name: orders-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "${DB_PASSWORD:-password}"
+      MYSQL_DATABASE: "${DB_NAME:-orders_db}"
+      MYSQL_USER: "${DB_USER:-orders_user}"
+      MYSQL_PASSWORD: "${DB_PASSWORD:-password}"
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./db/dump:/docker-entrypoint-initdb.d
+    networks:
+      - orders-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: orders-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - orders-network
+
+  manticore:
+    image: manticoresearch/manticore:latest
+    container_name: orders-manticore
+    restart: unless-stopped
+    ports:
+      - "${MANTICORE_PORT:-9306}:9306"
+      - "${MANTICORE_HTTP_PORT:-9308}:9308"
+    volumes:
+      - manticore_data:/var/lib/manticore
+      - ./docker/manticore/manticore.conf:/etc/manticoresearch/manticore.conf
+    networks:
+      - orders-network
+
+volumes:
+  db_data:
+  redis_data:
+  manticore_data:
+
+networks:
+  orders-network:
+    driver: bridge

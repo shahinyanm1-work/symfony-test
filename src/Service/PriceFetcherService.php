@@ -11,11 +11,9 @@ use Psr\Log\LoggerInterface;
 
 class PriceFetcherService
 {
-    /**
-     * @param PriceFetcherInterface[] $fetchers
-     */
     public function __construct(
-        private readonly array $fetchers,
+        /** @var iterable<PriceFetcherInterface> $fetchers */
+        private readonly iterable $fetchers,
         private readonly LoggerInterface $logger
     ) {
     }

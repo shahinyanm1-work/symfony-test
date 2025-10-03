@@ -41,6 +41,8 @@ cp env.example .env
 ```
 
 3. Запустите приложение:
+
+**На Linux/macOS:**
 ```bash
 make dev
 # или
@@ -49,19 +51,50 @@ make up
 docker-compose up --build -d
 ```
 
-4. Выполните миграции (если не использовали make dev):
+**На Windows:**
+```cmd
+# Используйте batch файл
+windows-commands.bat dev
+# или
+windows-commands.bat up
+# или
+docker-compose -f docker-compose.windows.yml up --build -d
+```
+
+4. Выполните миграции (если не использовали make dev / windows-commands.bat dev):
+
+**На Linux/macOS:**
 ```bash
 docker-compose exec app bin/console doctrine:migrations:migrate
 ```
 
-5. Заполните индекс Manticore (если не использовали make dev):
+**На Windows:**
+```cmd
+docker-compose -f docker-compose.windows.yml exec app bin/console doctrine:migrations:migrate
+```
+
+5. Заполните индекс Manticore (если не использовали make dev / windows-commands.bat dev):
+
+**На Linux/macOS:**
 ```bash
 docker-compose exec app bin/console app:seed-manticore
 ```
 
+**На Windows:**
+```cmd
+docker-compose -f docker-compose.windows.yml exec app bin/console app:seed-manticore
+```
+
 6. Проверьте работоспособность:
+
+**На Linux/macOS:**
 ```bash
 make check-health
+```
+
+**На Windows:**
+```cmd
+windows-commands.bat check-health
 ```
 
 ## API Endpoints
@@ -140,9 +173,11 @@ Swagger документация доступна по адресу: `http://loc
 
 Подробная схема в файле `db/dump/improved_schema.sql`
 
-## Команды Makefile
+## Команды
 
-### Основные команды
+### Linux/macOS (Makefile)
+
+#### Основные команды
 - `make up` - запуск всех сервисов
 - `make down` - остановка всех сервисов
 - `make dev` - запуск development окружения с автоматической настройкой
@@ -151,26 +186,50 @@ Swagger документация доступна по адресу: `http://loc
 - `make logs` - просмотр логов
 - `make shell` - доступ к контейнеру приложения
 
-### Команды качества кода
+#### Команды качества кода
 - `make cs-fix` - исправить стиль кода с помощью PHP CS Fixer
 - `make cs-check` - проверить стиль кода (dry-run)
 
-### Команды для разработки
+#### Команды для разработки
 - `make migrate` - выполнить миграции БД
 - `make seed-manticore` - заполнить индекс Manticore
 - `make cache-clear` - очистить кеш приложения
 - `make install` - установить зависимости
 
-### Команды для продакшна
+#### Команды для продакшна
 - `make prod-build` - сборка production образов
 - `make prod-up` - запуск production окружения
 - `make prod-down` - остановка production окружения
 
-### Утилиты
+#### Утилиты
 - `make backup-db` - создать резервную копию БД
 - `make restore-db BACKUP=file.sql` - восстановить БД из резервной копии
 - `make check-health` - проверить здоровье всех сервисов
 - `make clean` - очистить контейнеры и volumes
+
+### Windows (Batch файл)
+
+#### Основные команды
+- `windows-commands.bat up` - запуск всех сервисов
+- `windows-commands.bat down` - остановка всех сервисов
+- `windows-commands.bat dev` - запуск development окружения с автоматической настройкой
+- `windows-commands.bat test` - запуск тестов
+- `windows-commands.bat build` - пересборка контейнеров
+- `windows-commands.bat logs` - просмотр логов
+- `windows-commands.bat shell` - доступ к контейнеру приложения
+
+#### Команды качества кода
+- `windows-commands.bat cs-fix` - исправить стиль кода с помощью PHP CS Fixer
+- `windows-commands.bat cs-check` - проверить стиль кода (dry-run)
+
+#### Команды для разработки
+- `windows-commands.bat migrate` - выполнить миграции БД
+- `windows-commands.bat seed-manticore` - заполнить индекс Manticore
+- `windows-commands.bat cache-clear` - очистить кеш приложения
+
+#### Утилиты
+- `windows-commands.bat check-health` - проверить здоровье всех сервисов
+- `windows-commands.bat help` - показать справку по командам
 
 ## Разработка
 
