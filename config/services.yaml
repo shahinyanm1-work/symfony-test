@@ -18,3 +18,30 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    # Price Fetcher Services
+    App\Service\TileExpertPriceFetcher:
+        arguments:
+            $httpClient: '@GuzzleHttp\Client'
+            $cache: '@cache.app'
+            $logger: '@logger'
+            $cacheTtl: '%env(int:PRICE_CACHE_TTL)%'
+        tags: ['app.price_fetcher']
+
+    App\Service\PriceFetcherService:
+        arguments:
+            $fetchers: !tagged_iterator app.price_fetcher
+            $logger: '@logger'
+
+    # HTTP Client for external requests
+    GuzzleHttp\Client:
+        arguments:
+            - base_uri: '%env(string:TILE_EXPERT_BASE_URL)%'
+              timeout: 30
+
+    # Cache configuration - using filesystem for now, Redis can be configured later
+    cache.app:
+        class: Symfony\Component\Cache\Adapter\FilesystemAdapter
+        arguments:
+            - 'orders_cache'
+            - 0
