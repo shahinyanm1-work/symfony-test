@@ -36,25 +36,32 @@ cd symfony-test3
 
 2. Настройте переменные окружения:
 ```bash
-cp .env.example .env
+cp env.example .env
 # Отредактируйте .env при необходимости
 ```
 
 3. Запустите приложение:
 ```bash
+make dev
+# или
 make up
 # или
 docker-compose up --build -d
 ```
 
-4. Выполните миграции:
+4. Выполните миграции (если не использовали make dev):
 ```bash
 docker-compose exec app bin/console doctrine:migrations:migrate
 ```
 
-5. Заполните индекс Manticore:
+5. Заполните индекс Manticore (если не использовали make dev):
 ```bash
 docker-compose exec app bin/console app:seed-manticore
+```
+
+6. Проверьте работоспособность:
+```bash
+make check-health
 ```
 
 ## API Endpoints
@@ -135,12 +142,35 @@ Swagger документация доступна по адресу: `http://loc
 
 ## Команды Makefile
 
+### Основные команды
 - `make up` - запуск всех сервисов
 - `make down` - остановка всех сервисов
+- `make dev` - запуск development окружения с автоматической настройкой
 - `make test` - запуск тестов
 - `make build` - пересборка контейнеров
 - `make logs` - просмотр логов
 - `make shell` - доступ к контейнеру приложения
+
+### Команды качества кода
+- `make cs-fix` - исправить стиль кода с помощью PHP CS Fixer
+- `make cs-check` - проверить стиль кода (dry-run)
+
+### Команды для разработки
+- `make migrate` - выполнить миграции БД
+- `make seed-manticore` - заполнить индекс Manticore
+- `make cache-clear` - очистить кеш приложения
+- `make install` - установить зависимости
+
+### Команды для продакшна
+- `make prod-build` - сборка production образов
+- `make prod-up` - запуск production окружения
+- `make prod-down` - остановка production окружения
+
+### Утилиты
+- `make backup-db` - создать резервную копию БД
+- `make restore-db BACKUP=file.sql` - восстановить БД из резервной копии
+- `make check-health` - проверить здоровье всех сервисов
+- `make clean` - очистить контейнеры и volumes
 
 ## Разработка
 
@@ -208,13 +238,122 @@ docker-compose logs -f db
 
 ## Деплой
 
-Для продакшн деплоя:
+### Development окружение
+```bash
+make dev
+```
 
-1. Обновите переменные окружения
+### Production окружение
+```bash
+# Создайте production конфигурацию
+cp env.example .env.prod
+
+# Обновите переменные для production
+# APP_ENV=prod
+# APP_SECRET=your-production-secret
+# DATABASE_URL=mysql://user:password@prod-db:3306/orders_db
+
+# Запустите production окружение
+make prod-build
+make prod-up
+```
+
+### Требования для production
+1. Обновите переменные окружения в `.env.prod`
 2. Настройте SSL сертификаты
 3. Оптимизируйте конфигурацию PHP
 4. Настройте мониторинг
 5. Создайте резервные копии БД
+6. Настройте CI/CD pipeline
+
+## Качество кода
+
+Проект использует следующие инструменты для обеспечения качества кода:
+
+- **PHP CS Fixer** - автоматическое исправление стиля кода
+- **PHPUnit** - тестирование
+- **PHPStan** - статический анализ (опционально)
+
+```bash
+# Проверить стиль кода
+make cs-check
+
+# Исправить стиль кода
+make cs-fix
+
+# Запустить тесты
+make test
+```
+
+## Архитектура
+
+### Слои приложения
+1. **Controller** - HTTP контроллеры, валидация запросов
+2. **Service** - бизнес-логика, оркестрация
+3. **Repository** - доступ к данным, запросы к БД
+4. **Entity** - модели данных, маппинг БД
+5. **DTO** - объекты передачи данных
+6. **Interface** - контракты сервисов
+
+### Паттерны проектирования
+- **Repository Pattern** - абстракция доступа к данным
+- **Factory Pattern** - создание объектов
+- **Adapter Pattern** - адаптация внешних сервисов
+- **Strategy Pattern** - различные стратегии агрегации
+- **DTO Pattern** - передача данных между слоями
+
+## Мониторинг и логи
+
+### Логи
+```bash
+# Логи приложения
+make logs
+
+# Логи конкретного сервиса
+docker-compose logs -f app
+docker-compose logs -f db
+docker-compose logs -f redis
+docker-compose logs -f manticore
+```
+
+### Health Check
+```bash
+# Проверить здоровье всех сервисов
+make check-health
+
+# Проверить статус контейнеров
+docker-compose ps
+```
+
+## Troubleshooting
+
+### Частые проблемы
+
+1. **Порты заняты**
+   ```bash
+   # Измените порты в .env файле
+   APP_PORT=8081
+   DB_PORT=3307
+   ```
+
+2. **Проблемы с БД**
+   ```bash
+   # Пересоздать БД
+   make down
+   docker volume rm symfony-test3_db_data
+   make up
+   ```
+
+3. **Проблемы с кешем**
+   ```bash
+   make cache-clear
+   ```
+
+4. **Проблемы с Manticore**
+   ```bash
+   # Пересоздать индекс
+   make seed-manticore
+   ```
 
 ## Лицензия
 
