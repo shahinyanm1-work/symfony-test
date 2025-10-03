@@ -1,0 +1,123 @@
+name: PHPUnit Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: orders_db
+          MYSQL_USER: orders_user
+          MYSQL_PASSWORD: password
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+      manticore:
+        image: manticoresearch/manticore:latest
+        ports:
+          - 9308:9308
+          - 9306:9306
+        options: --health-cmd="curl -f http://localhost:9306/status" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, zip, curl, gd
+        coverage: xdebug
+
+    - name: Get composer cache directory
+      id: composer-cache
+      run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+
+    - name: Cache dependencies
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.composer-cache.outputs.dir }}
+        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+        restore-keys: ${{ runner.os }}-composer-
+
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress --no-suggest
+
+    - name: Create .env.test
+      run: |
+        cp .env .env.test
+        echo "DATABASE_URL=mysql://orders_user:password@127.0.0.1:3306/orders_db" >> .env.test
+        echo "REDIS_URL=redis://127.0.0.1:6379" >> .env.test
+        echo "MANTICORE_HOST=127.0.0.1" >> .env.test
+        echo "MANTICORE_PORT=9308" >> .env.test
+
+    - name: Wait for MySQL
+      run: |
+        while ! mysqladmin ping -h"127.0.0.1" -P3306 -u"orders_user" -p"password" --silent; do
+          echo "Waiting for MySQL..."
+          sleep 1
+        done
+
+    - name: Wait for Redis
+      run: |
+        while ! redis-cli -h 127.0.0.1 -p 6379 ping; do
+          echo "Waiting for Redis..."
+          sleep 1
+        done
+
+    - name: Wait for Manticore
+      run: |
+        while ! curl -f http://127.0.0.1:9306/status; do
+          echo "Waiting for Manticore..."
+          sleep 1
+        done
+
+    - name: Create Manticore index
+      run: |
+        curl -X POST http://127.0.0.1:9308/cli -d "CREATE TABLE orders (id bigint, client_name text, client_surname text, email text, company_name text, number text, articles text, created_at timestamp, status int, currency string, hash string)"
+
+    - name: Run database migrations
+      run: php bin/console doctrine:migrations:migrate --no-interaction --env=test
+
+    - name: Run PHPUnit tests
+      run: php bin/phpunit --coverage-clover=coverage.xml
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+    - name: Run PHP CS Fixer (dry-run)
+      run: |
+        if [ -f vendor/bin/php-cs-fixer ]; then
+          vendor/bin/php-cs-fixer fix --dry-run --diff --verbose
+        else
+          echo "PHP CS Fixer not available, skipping..."
+        fi
+
+    - name: Run PHPStan (if available)
+      run: |
+        if [ -f vendor/bin/phpstan ]; then
+          vendor/bin/phpstan analyse --memory-limit=2G
+        else
+          echo "PHPStan not available, skipping..."
+        fi
