@@ -33,6 +33,15 @@ services:
             $fetchers: !tagged_iterator app.price_fetcher
             $logger: '@logger'
 
+    # Search Service
+    App\Service\ManticoreSearchService:
+        arguments:
+            $manticoreHost: '%env(string:MANTICORE_HOST)%'
+            $manticorePort: '%env(int:MANTICORE_PORT)%'
+            $orderRepository: '@App\Repository\OrderRepository'
+            $orderService: '@App\Service\OrderService'
+            $logger: '@logger'
+
     # HTTP Client for external requests
     GuzzleHttp\Client:
         arguments:
