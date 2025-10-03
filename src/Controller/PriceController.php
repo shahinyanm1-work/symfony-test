@@ -14,6 +14,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use OpenApi\Attributes as OA;
 
 #[Route('/api', name: 'api_')]
 class PriceController extends AbstractController
@@ -26,6 +27,57 @@ class PriceController extends AbstractController
     }
 
     #[Route('/price', name: 'price', methods: ['GET'])]
+    #[OA\Get(
+        path: '/api/price',
+        summary: 'Get product price',
+        description: 'Fetch product price from external source with caching support',
+        tags: ['Price'],
+        parameters: [
+            new OA\Parameter(
+                name: 'factory',
+                description: 'Factory identifier',
+                in: 'query',
+                required: true,
+                schema: new OA\Schema(type: 'string', example: 'cobsa')
+            ),
+            new OA\Parameter(
+                name: 'collection',
+                description: 'Collection identifier',
+                in: 'query',
+                required: true,
+                schema: new OA\Schema(type: 'string', example: 'manual')
+            ),
+            new OA\Parameter(
+                name: 'article',
+                description: 'Article identifier',
+                in: 'query',
+                required: true,
+                schema: new OA\Schema(type: 'string', example: 'manu7530bcbm-manualbaltic7-5x30')
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Price information',
+                content: new OA\JsonContent(ref: '#/components/schemas/PriceResponse')
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Invalid parameters',
+                content: new OA\JsonContent(ref: '#/components/schemas/Error')
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Price not found',
+                content: new OA\JsonContent(ref: '#/components/schemas/Error')
+            ),
+            new OA\Response(
+                response: 503,
+                description: 'Price service unavailable',
+                content: new OA\JsonContent(ref: '#/components/schemas/Error')
+            )
+        ]
+    )]
     public function getPrice(Request $request): JsonResponse
     {
         try {

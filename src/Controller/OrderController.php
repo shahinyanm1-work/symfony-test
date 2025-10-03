@@ -16,6 +16,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use OpenApi\Attributes as OA;
 
 #[Route('/api/orders', name: 'api_orders_')]
 class OrderController extends AbstractController
@@ -29,6 +30,69 @@ class OrderController extends AbstractController
     }
 
     #[Route('/aggregate', name: 'aggregate', methods: ['GET'])]
+    #[OA\Get(
+        path: '/api/orders/aggregate',
+        summary: 'Aggregate orders',
+        description: 'Get aggregated order statistics with grouping by date and pagination',
+        tags: ['Orders'],
+        parameters: [
+            new OA\Parameter(
+                name: 'group_by',
+                description: 'Grouping period',
+                in: 'query',
+                required: true,
+                schema: new OA\Schema(type: 'string', enum: ['day', 'month', 'year'], example: 'month')
+            ),
+            new OA\Parameter(
+                name: 'page',
+                description: 'Page number',
+                in: 'query',
+                schema: new OA\Schema(type: 'integer', minimum: 1, default: 1)
+            ),
+            new OA\Parameter(
+                name: 'per_page',
+                description: 'Items per page',
+                in: 'query',
+                schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100, default: 20)
+            ),
+            new OA\Parameter(
+                name: 'status',
+                description: 'Filter by order status',
+                in: 'query',
+                schema: new OA\Schema(type: 'integer', enum: [1, 2, 3, 4, 5])
+            ),
+            new OA\Parameter(
+                name: 'from_date',
+                description: 'Start date filter (Y-m-d)',
+                in: 'query',
+                schema: new OA\Schema(type: 'string', format: 'date')
+            ),
+            new OA\Parameter(
+                name: 'to_date',
+                description: 'End date filter (Y-m-d)',
+                in: 'query',
+                schema: new OA\Schema(type: 'string', format: 'date')
+            ),
+            new OA\Parameter(
+                name: 'user_id',
+                description: 'Filter by user ID',
+                in: 'query',
+                schema: new OA\Schema(type: 'integer')
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Aggregated order data',
+                content: new OA\JsonContent(ref: '#/components/schemas/AggregationResponse')
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Invalid parameters',
+                content: new OA\JsonContent(ref: '#/components/schemas/Error')
+            )
+        ]
+    )]
     public function aggregateOrders(Request $request): JsonResponse
     {
         try {
@@ -136,6 +200,33 @@ class OrderController extends AbstractController
     }
 
     #[Route('/{id}', name: 'get', methods: ['GET'], requirements: ['id' => '\d+'])]
+    #[OA\Get(
+        path: '/api/orders/{id}',
+        summary: 'Get order by ID',
+        description: 'Retrieve order details by ID',
+        tags: ['Orders'],
+        parameters: [
+            new OA\Parameter(
+                name: 'id',
+                description: 'Order ID',
+                in: 'path',
+                required: true,
+                schema: new OA\Schema(type: 'integer', example: 1)
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Order details',
+                content: new OA\JsonContent(ref: '#/components/schemas/OrderResponse')
+            ),
+            new OA\Response(
+                response: 404,
+                description: 'Order not found',
+                content: new OA\JsonContent(ref: '#/components/schemas/Error')
+            )
+        ]
+    )]
     public function getOrder(int $id): JsonResponse
     {
         try {

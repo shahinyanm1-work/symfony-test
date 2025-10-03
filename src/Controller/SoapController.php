@@ -15,6 +15,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use OpenApi\Attributes as OA;
 
 #[Route('/api/soap', name: 'api_soap_')]
 class SoapController extends AbstractController
@@ -27,6 +28,75 @@ class SoapController extends AbstractController
     }
 
     #[Route('/orders', name: 'create_order', methods: ['POST'])]
+    #[OA\Post(
+        path: '/api/soap/orders',
+        summary: 'Create order via SOAP',
+        description: 'Create a new order using SOAP XML format',
+        tags: ['SOAP', 'Orders'],
+        requestBody: new OA\RequestBody(
+            description: 'SOAP XML request',
+            required: true,
+            content: new OA\MediaType(
+                mediaType: 'text/xml',
+                schema: new OA\Schema(type: 'string', example: '<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+    <soap:Body>
+        <createOrder>
+            <client_name>John</client_name>
+            <client_surname>Doe</client_surname>
+            <email>john@example.com</email>
+            <items>
+                <item>
+                    <article_id>1001</article_id>
+                    <amount>10</amount>
+                    <price>25.99</price>
+                </item>
+            </items>
+        </createOrder>
+    </soap:Body>
+</soap:Envelope>')
+            )
+        ),
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Order created successfully',
+                content: new OA\MediaType(
+                    mediaType: 'text/xml',
+                    schema: new OA\Schema(type: 'string', example: '<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+    <soap:Body>
+        <createOrderResponse>
+            <result>success</result>
+            <orderId>1</orderId>
+            <orderHash>abc123</orderHash>
+            <message>Order created successfully</message>
+        </createOrderResponse>
+    </soap:Body>
+</soap:Envelope>')
+                )
+            ),
+            new OA\Response(
+                response: 500,
+                description: 'SOAP Fault',
+                content: new OA\MediaType(
+                    mediaType: 'text/xml',
+                    schema: new OA\Schema(type: 'string', example: '<?xml version="1.0" encoding="UTF-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">
+    <soap:Body>
+        <soap:Fault>
+            <faultcode>soap:Server</faultcode>
+            <faultstring>Validation error</faultstring>
+            <detail>
+                <errorMessage>Invalid parameters</errorMessage>
+            </detail>
+        </soap:Fault>
+    </soap:Body>
+</soap:Envelope>')
+                )
+            )
+        ]
+    )]
     public function createOrder(Request $request): Response
     {
         try {

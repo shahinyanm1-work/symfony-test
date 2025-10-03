@@ -1,0 +1,192 @@
+nelmio_api_doc:
+    documentation:
+        info:
+            title: Orders Management API
+            description: |
+                Полноценное API для управления заказами с интеграцией внешних сервисов, поиском и агрегацией данных.
+                
+                ## Возможности
+                - Получение цен товаров через внешние API
+                - Создание и управление заказами
+                - Агрегация заказов с группировкой по датам
+                - Поиск заказов с поддержкой wildcard запросов
+                - SOAP API для интеграции с внешними системами
+            version: 1.0.0
+            contact:
+                name: API Support
+                email: support@example.com
+        servers:
+            - url: http://localhost:8080
+              description: Development server
+            - url: https://api.example.com
+              description: Production server
+        components:
+            securitySchemes:
+                bearerAuth:
+                    type: http
+                    scheme: bearer
+                    bearerFormat: JWT
+            schemas:
+                Error:
+                    type: object
+                    properties:
+                        error:
+                            type: string
+                            description: Error type
+                        message:
+                            type: string
+                            description: Error message
+                        details:
+                            type: array
+                            items:
+                                type: string
+                            description: Additional error details
+                PriceResponse:
+                    type: object
+                    properties:
+                        price:
+                            type: number
+                            format: float
+                            description: Price value
+                        currency:
+                            type: string
+                            description: Currency code
+                        factory:
+                            type: string
+                            description: Factory identifier
+                        collection:
+                            type: string
+                            description: Collection identifier
+                        article:
+                            type: string
+                            description: Article identifier
+                        fetched_at:
+                            type: string
+                            format: date-time
+                            description: When the price was fetched
+                        source_url:
+                            type: string
+                            format: uri
+                            description: Source URL
+                OrderResponse:
+                    type: object
+                    properties:
+                        id:
+                            type: integer
+                            description: Order ID
+                        uuid:
+                            type: string
+                            description: Order UUID
+                        hash:
+                            type: string
+                            description: Order hash
+                        client_name:
+                            type: string
+                            description: Client first name
+                        client_surname:
+                            type: string
+                            description: Client last name
+                        email:
+                            type: string
+                            format: email
+                            description: Client email
+                        status:
+                            type: integer
+                            description: Order status
+                        currency:
+                            type: string
+                            description: Order currency
+                        created_at:
+                            type: string
+                            format: date-time
+                            description: Creation timestamp
+                        articles:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/OrderArticle'
+                OrderArticle:
+                    type: object
+                    properties:
+                        id:
+                            type: integer
+                            description: Article ID
+                        article_id:
+                            type: integer
+                            description: External article ID
+                        article_code:
+                            type: string
+                            description: Article code
+                        article_name:
+                            type: string
+                            description: Article name
+                        amount:
+                            type: number
+                            format: float
+                            description: Quantity
+                        price:
+                            type: number
+                            format: float
+                            description: Unit price
+                        currency:
+                            type: string
+                            description: Price currency
+                        measure:
+                            type: string
+                            description: Measurement unit
+                AggregationResponse:
+                    type: object
+                    properties:
+                        meta:
+                            type: object
+                            properties:
+                                page:
+                                    type: integer
+                                    description: Current page
+                                per_page:
+                                    type: integer
+                                    description: Items per page
+                                total_pages:
+                                    type: integer
+                                    description: Total pages
+                                total_items:
+                                    type: integer
+                                    description: Total items
+                        data:
+                            type: array
+                            items:
+                                type: object
+                                properties:
+                                    group:
+                                        type: string
+                                        description: Group identifier (date)
+                                    count:
+                                        type: integer
+                                        description: Number of items in group
+                SearchResponse:
+                    type: object
+                    properties:
+                        meta:
+                            type: object
+                            properties:
+                                query:
+                                    type: string
+                                    description: Search query
+                                page:
+                                    type: integer
+                                    description: Current page
+                                per_page:
+                                    type: integer
+                                    description: Items per page
+                                total:
+                                    type: integer
+                                    description: Total results
+                                total_pages:
+                                    type: integer
+                                    description: Total pages
+                        data:
+                            type: array
+                            items:
+                                $ref: '#/components/schemas/OrderResponse'
+    areas:
+        path_patterns:
+            - ^/api(?!/doc$)

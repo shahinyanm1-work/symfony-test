@@ -12,6 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use OpenApi\Attributes as OA;
 
 #[Route('/api/orders', name: 'api_orders_')]
 class SearchController extends AbstractController
@@ -24,6 +25,50 @@ class SearchController extends AbstractController
     }
 
     #[Route('/search', name: 'search', methods: ['GET'])]
+    #[OA\Get(
+        path: '/api/orders/search',
+        summary: 'Search orders',
+        description: 'Search orders with wildcard support using Manticore Search',
+        tags: ['Orders', 'Search'],
+        parameters: [
+            new OA\Parameter(
+                name: 'q',
+                description: 'Search query with wildcard support (e.g., "john*", "*smith", "*test*")',
+                in: 'query',
+                required: true,
+                schema: new OA\Schema(type: 'string', example: 'john*')
+            ),
+            new OA\Parameter(
+                name: 'page',
+                description: 'Page number',
+                in: 'query',
+                schema: new OA\Schema(type: 'integer', minimum: 1, default: 1)
+            ),
+            new OA\Parameter(
+                name: 'per_page',
+                description: 'Items per page',
+                in: 'query',
+                schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100, default: 20)
+            )
+        ],
+        responses: [
+            new OA\Response(
+                response: 200,
+                description: 'Search results',
+                content: new OA\JsonContent(ref: '#/components/schemas/SearchResponse')
+            ),
+            new OA\Response(
+                response: 400,
+                description: 'Invalid query parameters',
+                content: new OA\JsonContent(ref: '#/components/schemas/Error')
+            ),
+            new OA\Response(
+                response: 500,
+                description: 'Search service error',
+                content: new OA\JsonContent(ref: '#/components/schemas/Error')
+            )
+        ]
+    )]
     public function searchOrders(Request $request): JsonResponse
     {
         try {
